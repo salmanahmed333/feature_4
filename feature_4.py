@@ -1,92 +1,98 @@
 # Import necessary libraries
-import streamlit as st
+import streamlit as streamlit_app
 
-# TrafficSignal class for managing traffic signal details
-class TrafficSignal:
-    def __init__(self, position, coordinates):
-        self.position = position
-        self.coordinates = coordinates
-        self.status = False  # False represents Red, True represents Green
+# SignalClass for managing details of signals at traffic junctions
+class SignalClass:
+    def __init__(self, pos, coords):
+        self.pos = pos
+        self.coords = coords
+        self.is_active = False  # False represents Red, True represents Green
+        self.signal_status = False  # Red by default
     
-    def toggle_signal(self):
-        self.status = not self.status
-
-    def get_signal_info(self):
-        return {
-            "Position": self.position,
-            "Latitude": self.coordinates[0],
-            "Longitude": self.coordinates[1],
-            "Status": "Green" if self.status else "Red"
-        }
-
-# Street class to represent street details and related traffic signals
-class Street:
-    def __init__(self, name, direction, start_coord, end_coord, length):
-        self.name = name
-        self.direction = direction
-        self.start_coord = start_coord
-        self.end_coord = end_coord
-        self.length = length
-        self.signal = None
+    def flip_status(self):
+        if self.signal_status:
+            self.signal_status = False
+        else:
+            self.signal_status = True
     
-    def add_traffic_signal(self):
-        self.signal = TrafficSignal(self.direction, self.end_coord)
-    
-    def get_street_info(self):
+    def display_info(self):
         info = {
-            "Name": self.name,
-            "Direction": self.direction,
-            "Start Coordinate": self.start_coord,
-            "End Coordinate": self.end_coord,
-            "Length": self.length
+            "Position": self.pos,
+            "Latitude": self.coords[0],
+            "Longitude": self.coords[1],
+            "Status": "Green" if self.signal_status else "Red"
         }
-        if self.signal:
-            info.update({"Signal Info": self.signal.get_signal_info()})
         return info
 
-# Junction class for managing junctions with multiple streets
-class Junction:
-    def __init__(self, junction_id, streets):
-        self.junction_id = junction_id
-        self.streets = streets  # List of streets forming the junction
+# StreetClass to manage information about streets and signals on those streets
+class StreetClass:
+    def __init__(self, road_name, road_direction, coord_start, coord_end, road_length):
+        self.road_name = road_name
+        self.road_direction = road_direction
+        self.coord_start = coord_start
+        self.coord_end = coord_end
+        self.road_length = road_length
+        self.traffic_signal = None
+        self.signal_object = None
     
-    def get_junction_info(self):
-        junction_info = {"Junction ID": self.junction_id, "Streets": []}
-        for street in self.streets:
-            junction_info["Streets"].append(street.get_street_info())
-        return junction_info
-
-# Function to display signal details in Streamlit interface
-def display_signal(signal):
-    signal_info = signal.get_signal_info()
-    st.write("Signal Position:", signal_info["Position"])
-    st.write("Latitude:", signal_info["Latitude"])
-    st.write("Longitude:", signal_info["Longitude"])
-    st.write("Status:", signal_info["Status"])
-
-# Streamlit app interface for managing streets, signals, and junctions
-def main():
-    st.title("Traffic Signal Management System")
-
-    # Sample streets and junction for testing
-    street_1 = Street("Cicero Ave", "Southbound", (41.8797, -87.8045), (41.8942, -87.8051), 1.01)
-    street_2 = Street("Main St", "Northbound", (41.8790, -87.8030), (41.8935, -87.8065), 1.20)
-    junction_1 = Junction("Junction 1", [street_1, street_2])
+    def attach_traffic_signal(self):
+        self.traffic_signal = SignalClass(self.road_direction, self.coord_end)
     
-    # Add traffic signal to street and display information
-    street_1.add_traffic_signal()
-    st.subheader("Street Information")
-    st.json(street_1.get_street_info())
+    def display_road_info(self):
+        road_info = {
+            "Street Name": self.road_name,
+            "Direction": self.road_direction,
+            "Start Coordinate": self.coord_start,
+            "End Coordinate": self.coord_end,
+            "Length of Street": self.road_length
+        }
+        if self.traffic_signal:
+            road_info["Signal Info"] = self.traffic_signal.display_info()
+        return road_info
 
-    # Toggle signal and display updated status
-    if street_1.signal:
-        if st.button("Toggle Signal Status for Cicero Ave"):
-            street_1.signal.toggle_signal()
-        display_signal(street_1.signal)
+# Intersection class that uses streets in a more complex structure
+class Intersection:
+    def __init__(self, identifier, street_collection):
+        self.identifier = identifier
+        self.street_collection = street_collection
+    
+    def get_info_of_intersection(self):
+        intersection_info = {"Intersection ID": self.identifier, "Street Details": []}
+        for strt in self.street_collection:
+            intersection_info["Street Details"].append(strt.display_road_info())
+        return intersection_info
 
-    # Display junction information
-    st.subheader("Junction Information")
-    st.json(junction_1.get_junction_info())
+# Function for Streamlit to display signal information
+def show_signal_information(signal_instance):
+    info = signal_instance.display_info()
+    streamlit_app.write("Signal Position:", info["Position"])
+    streamlit_app.write("Latitude:", info["Latitude"])
+    streamlit_app.write("Longitude:", info["Longitude"])
+    streamlit_app.write("Current Status:", info["Status"])
+
+# Streamlit application layout to showcase street, signal, and intersection info
+def run_application():
+    streamlit_app.title("Traffic Signal Management System")
+
+    # Create example streets and intersections
+    street_one = StreetClass("Cicero Ave", "Southbound", (41.8797, -87.8045), (41.8942, -87.8051), 1.01)
+    street_two = StreetClass("Main St", "Northbound", (41.8790, -87.8030), (41.8935, -87.8065), 1.20)
+    intersection_one = Intersection("Intersection 1", [street_one, street_two])
+    
+    # Add traffic signal to the street and showcase details
+    street_one.attach_traffic_signal()
+    streamlit_app.subheader("Street Information Section")
+    streamlit_app.json(street_one.display_road_info())
+
+    # Allow toggling signal status and display updated signal status
+    if street_one.traffic_signal:
+        if streamlit_app.button("Change Signal Status for Cicero Ave"):
+            street_one.traffic_signal.flip_status()
+        show_signal_information(street_one.traffic_signal)
+
+    # Display intersection details
+    streamlit_app.subheader("Intersection Details Section")
+    streamlit_app.json(intersection_one.get_info_of_intersection())
 
 if __name__ == "__main__":
-    main()
+    run_application()
